@@ -7,22 +7,23 @@
 #define RED 2
 #define Green 3
 #define buzzer 8
-MFRC522 mfrc522(SS_PIN, RST_PIN);   // creating MFRC522 instance.
+
+MFRC522 mfrc522(SS_PIN, RST_PIN);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 
 void setup() 
 {
-  Serial.begin(9600);   // initiating serial communication
-  SPI.begin();      // initiating SPI bus
-  lcd.init();  // initializing the lcd screen
-  lcd.backlight();   // turning on the backlight
-  mfrc522.PCD_Init();   // initiating MFRC522
+  Serial.begin(9600);
+  SPI.begin();      
+  lcd.init();  
+  lcd.backlight();
+  mfrc522.PCD_Init();
   Serial.println("Approximate your card to the reader...");
   Serial.println();
   pinMode(buzzer, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);    // turning of the LED, low voltage level
+  digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(Green, LOW);
   digitalWrite(RED, LOW);
   mlx.begin();
@@ -41,15 +42,15 @@ void loop()
    delay(1000);
    lcd.clear();
 }
-  if ( ! mfrc522.PICC_IsNewCardPresent())   // searching for new cards
+  if ( ! mfrc522.PICC_IsNewCardPresent())
   {
     return;
   }
-  if ( ! mfrc522.PICC_ReadCardSerial())   // selecting one of the cards
+  if ( ! mfrc522.PICC_ReadCardSerial())
   {
     return;
   }
-  Serial.print("UID tag :");  // showing UID on serial monitor
+  Serial.print("UID tag :");
   String content= "";
   byte letter;
   for (byte i = 0; i < mfrc522.uid.size; i++) 
@@ -65,17 +66,17 @@ void loop()
   if ((content.substring(1) == "91 E8 CB 27") || (content.substring(1) == "E0 47 D1 21") ) 
 
   {
-    Serial.println("Authorized access"); // changing the UID of the card that you want to give access
+    Serial.println("Authorized access"); 
     Serial.println();
-        for(int i=100 ; i<2000 ; i++){ // sound frequency
+        for(int i=100 ; i<2000 ; i++){
          tone(buzzer, i);
-         delay(10); // the delay
+         delay(10); 
     }
     for(int i=2000 ; i>100 ; i--){
          tone(buzzer, i);
          delay(10);
     } 
-    digitalWrite(LED_BUILTIN, HIGH);   // turning on the LED, high voltage level
+    digitalWrite(LED_BUILTIN, HIGH); 
     digitalWrite(Green, HIGH);
     delay(1000);    
     digitalWrite(Green, LOW);
@@ -83,8 +84,9 @@ void loop()
 
  else   {
     Serial.println("Access denied");
-    digitalWrite(LED_BUILTIN, LOW);    // turning off the LED, low voltage level
+    digitalWrite(LED_BUILTIN, LOW); 
     digitalWrite(RED, HIGH);
     delay(1000);
     digitalWrite(RED, LOW);  
-  } }
+  }
+}
