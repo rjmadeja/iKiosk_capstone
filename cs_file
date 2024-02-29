@@ -1,0 +1,131 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using FireSharp.Response;
+using FireSharp.Interfaces;
+using FireSharp.Config;
+using System.IO;
+using System.Drawing.Imaging;
+using Newtonsoft.Json;
+
+namespace rfid_and_temp
+{
+    public partial class Form1 : Form
+    {
+        private string imageLocation;
+        IFirebaseConfig config = new FirebaseConfig
+        {
+            AuthSecret = "uUInW1fwZgY8dtIwltwUaMk65gVfXhBRqNBfvuEW",
+            BasePath = "https://student-data-45ffc-default-rtdb.asia-southeast1.firebasedatabase.app/"        };
+        IFirebaseClient client;
+        public Form1()
+        {
+            InitializeComponent();
+            this.WindowState = FormWindowState.Maximized;
+            serialPort1.Open();        }
+
+        private async void serialPort1_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
+        {
+            String indata = serialPort1.ReadLine();
+            String text = indata.Substring(1);
+            if (indata[0] == 'T') {
+                label7.Invoke(new Action(()=>label7.Text=text+"°C"));            }
+            if (indata[0] == 'R') {
+                String UID = indata.Substring(1);
+                Boolean bo = false;
+                textBox4.Invoke(new Action(() => textBox4.Text = UID));
+                FirebaseResponse response = await client.GetTaskAsync("Information/");
+                Dictionary<string, Data> data = response.ResultAs<Dictionary<string, Data>>();
+                foreach (var get in data) { 
+                        if (get.Value.UID == UID)
+                        {
+                            bo = true;
+                            label9.Invoke(new Action(() => label9.Text = get.Value.Name));
+                            label10.Invoke(new Action(() => label10.Text = get.Value.ID));
+                            label12.Invoke(new Action(() => label12.Text = get.Value.Course));
+                            label13.Invoke(new Action(() => label13.Text = get.Value.SV));
+                            byte[] b = Convert.FromBase64String(get.Value.Image);
+                            MemoryStream ms = new MemoryStream();
+                            ms.Write(b, 0, Convert.ToInt32(b.Length));
+                            Bitmap bm = new Bitmap(ms, false);
+                            ms.Dispose();
+                            pictureBox2.Image = bm.GetThumbnailImage(200, 200, null, new IntPtr());
+                            var datalayer2 = new Data2
+                            {
+                                Temperature = label7.Text,
+                                UID = get.Value.UID,
+                                Date = DateTime.Now                            };
+                            SetResponse resp = await client.SetTaskAsync("Temperatures/" + get.Value.Name + "--" + get.Value.ID + " -> " + DateTime.Now, datalayer2);
+                            Data2 result = resp.ResultAs<Data2>();
+                        }
+                    }
+                if (bo == false) {
+                    MessageBox.Show("WARNING!! THIS ID IS NOT REGISTERED");
+                }
+        }
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            client = new FireSharp.FirebaseClient(config);
+            if (client != null) {
+                label5.Text = "Firebase Connected";
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                OpenFileDialog dialog = new OpenFileDialog();
+                dialog.Title = "Select Image";
+                dialog.Filter = "Image Files(*.jpg)|*.jpg";
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    Image img = new Bitmap(dialog.FileName);
+                    pictureBox1.Image = img.GetThumbnailImage(200,200, null, new IntPtr());
+                }
+            }
+            catch (Exception)
+            { }
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            textBox1.Text = "";
+            textBox2.Text = "";
+            textBox3.Text = "";
+            textBox4.Text = "";
+            comboBox1.SelectedIndex = -1;
+            pictureBox1.Image = null;        }
+
+        private async void button2_Click(object sender, EventArgs e)
+        {  MemoryStream ms = new MemoryStream();
+            pictureBox1.Image.Save(ms, ImageFormat.Jpeg);
+            byte[] a = ms.GetBuffer();
+            string output = Convert.ToBase64String(a);
+            var datalayer = new Data {
+                Name = textBox1.Text,
+                ID = textBox2.Text,
+                Course = textBox3.Text,
+                UID = textBox4.Text,
+                SV = comboBox1.Text,
+                Image = output };
+            SetResponse resp = await client.SetTaskAsync("Information/"+ textBox2.Text.Replace(" ", String.Empty) , datalayer);
+            Data result = resp.ResultAs<Data>();
+            MessageBox.Show("Data " + textBox2.Text+ " is inserted");
+            textBox1.Text = "";
+            textBox2.Text = "";
+            textBox3.Text = "";
+            textBox4.Text = "";
+            comboBox1.SelectedIndex = -1;
+            pictureBox1.Image = null;
+        }
+    }
+}
